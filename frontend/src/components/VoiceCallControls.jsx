@@ -65,7 +65,7 @@ const VoiceCallControls = ({
       >
         <p
           key={utteranceId}
-          className="question-fade-in"
+          className="question-fade-in voice-question-text"
           style={{
             fontSize: '1.6rem',
             lineHeight: '1.6',

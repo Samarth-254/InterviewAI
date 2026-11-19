@@ -12,6 +12,7 @@ import DashboardPage from './pages/DashboardPage';
 import FeedbackReportPage from './pages/FeedbackReportPage';
 import ProfilePage from './pages/ProfilePage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import LandingPage from './pages/LandingPage';
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -62,9 +63,9 @@ const App = () => {
           <Route path="/interview/session" element={<ProtectedRoute><InterviewSessionPage /></ProtectedRoute>} />
           <Route path="/feedback/:sessionId" element={<ProtectedRoute><FeedbackReportPage /></ProtectedRoute>} />
 
-          {/* Default redirect */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          {/* Landing page */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

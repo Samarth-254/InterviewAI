@@ -1,6 +1,6 @@
 import { StateGraph, START, END } from '@langchain/langgraph';
 import { checkpointer } from './checkpointer.js';
-import { InterviewState, defaultState, topicBanks } from './state.js';
+import { InterviewState, defaultState, topicBanks, getTopicsForSession } from './state.js';
 import { questionGenerator } from './nodes/questionGenerator.js';
 import { answerEvaluator } from './nodes/answerEvaluator.js';
 import { followUpRouter } from './nodes/followUpRouter.js';
@@ -8,14 +8,21 @@ import { difficultyAdjuster } from './nodes/difficultyAdjuster.js';
 import { closingNode } from './nodes/closingNode.js';
 
 /**
- * setProbeInstruction — relocated, unchanged logic.
- * Previously this lived inline in the orchestrator between routing and
- * questionGenerator. LangGraph conditional-edge functions can only return a
- * route name (not state updates), so this small piece had to become a node
- * to keep running in the same place in the sequence.
+ * setProbeInstruction — calibrated for candidate experience level.
+ * When a fresher struggles or gives a vague answer, provide supportive scaffolding
+ * rather than aggressive interrogation into low-level internals.
  */
 const setProbeInstruction = async (state) => {
   if (!state.nextInstruction?.startsWith('SURPRISE_CALLBACK')) {
+    const exp = (state.candidateProfile?.experienceLevel || 'mid').toLowerCase();
+    const isFresher = exp === 'student' || exp === 'junior';
+
+    if (isFresher) {
+      return {
+        nextInstruction: `The candidate is a student/fresher and their response was ${state.lastAnswerQuality}. Ask a supportive, guided follow-up on "${state.currentTopic}". Give a gentle hint, simple real-world analogy, or ask a guiding sub-question to help them structure their answer. DO NOT ask them to implement data structures from scratch, calculate memory resize overhead, or dive into compiler internals.`,
+      };
+    }
+
     return {
       nextInstruction: `The candidate's answer was ${state.lastAnswerQuality}. Ask a follow-up that probes deeper on "${state.currentTopic}". Don't move to a new topic yet.`,
     };
@@ -56,8 +63,11 @@ const compiledGraph = builder.compile();
 
 export const interviewGraph = {
   async initializeState(sessionId, { interviewType, candidateProfile }) {
-    const bank = topicBanks[interviewType] || topicBanks.behavioral;
+    const bank = getTopicsForSession({ interviewType, jobRole: candidateProfile?.jobRole });
     const firstTopic = bank[0];
+
+    const exp = (candidateProfile?.experienceLevel || 'mid').toLowerCase();
+    const initialDifficulty = (exp === 'student' || exp === 'junior') ? 1 : (exp === 'senior' || exp === 'lead' || exp === 'principal') ? 3 : 2;
 
     const initialState = {
       ...defaultState,
@@ -65,6 +75,7 @@ export const interviewGraph = {
       interviewType,
       candidateProfile,
       currentTopic: firstTopic,
+      difficultyLevel: initialDifficulty,
       startedAt: new Date().toISOString(),
     };
 

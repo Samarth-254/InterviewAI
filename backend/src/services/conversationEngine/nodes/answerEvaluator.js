@@ -38,19 +38,25 @@ export const answerEvaluator = async (state) => {
     .map((t) => `${t.speaker === 'ai' ? 'Q' : 'A'}: ${t.content}`)
     .join('\n');
 
+  const expLevel = (state.candidateProfile?.experienceLevel || 'mid').toLowerCase();
+  const isFresher = expLevel === 'student' || expLevel === 'junior';
+
   // ── 1. Standard quality classification ───────────────────────────────────
   const classifyPrompt = `You are an expert interview evaluator. Classify the candidate's answer quality.
 
 Interview type: ${interviewType}
+Candidate level: ${state.candidateProfile?.experienceLevel || 'mid'}
 Topic: ${currentTopic}
 
 Recent conversation:
 ${recentContext}
 
 Classify the LAST candidate answer as exactly one of:
-- "strong": Specific, structured, demonstrates clear competency with concrete examples or deep knowledge
-- "weak": Superficial, missing key details, does not adequately demonstrate the required competency
-- "vague": Too general, ambiguous, lacks specifics — needs probing to extract substance
+- "strong": Clear, accurate, demonstrates good understanding for their level with relevant concepts or examples
+- "weak": Incorrect or completely missing the concept
+- "vague": Very brief, surface-level, or hesitant — needs a gentle guided follow-up or hint
+
+${isFresher ? 'CALIBRATION NOTE: The candidate is a student/fresher. Evaluate against the realistic bar for an entry-level candidate. Naming the correct data structure, concept, or practical approach should be classified as "strong" rather than expecting senior-level internal mechanics.' : ''}
 
 Respond with ONLY one word: strong, weak, or vague.`;
 

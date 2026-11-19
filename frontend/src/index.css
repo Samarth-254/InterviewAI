@@ -868,3 +868,198 @@ a:hover { color: var(--text-primary); }
 .sleek-scroll:hover::-webkit-scrollbar-thumb:hover {
   background: rgba(255,255,255,0.26);
 }
+
+/* ---- Keyframe Animations & Animated Assets ---- */
+@keyframes soundWaveBounce {
+  0%, 100% {
+    height: 6px;
+    opacity: 0.35;
+  }
+  50% {
+    height: 38px;
+    opacity: 1;
+  }
+}
+
+@keyframes pulseGlowRing {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.9;
+    box-shadow: 0 0 0 0 rgba(255, 90, 31, 0.6);
+  }
+  70% {
+    transform: scale(1.15);
+    opacity: 0.2;
+    box-shadow: 0 0 25px 20px rgba(255, 90, 31, 0);
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes liveDotPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 8px rgba(74, 222, 128, 0);
+  }
+}
+
+@keyframes shimmerGlow {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.anim-soundwave-bar {
+  width: 4px;
+  background: var(--accent);
+  border-radius: 99px;
+  animation: soundWaveBounce 1.2s ease-in-out infinite alternate;
+}
+
+.anim-float {
+  animation: floatGentle 4s ease-in-out infinite;
+}
+
+.anim-live-dot {
+  animation: liveDotPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ============================================================
+   Platform-Wide Mobile Responsiveness Enhancements
+   ============================================================ */
+
+html, body {
+  overflow-x: clip;
+  max-width: 100vw;
+}
+
+/* Base mobile adjustments */
+.mobile-menu-btn {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+  .container {
+    padding: 0 16px !important;
+  }
+
+  .landing-nav-links {
+    display: none !important;
+  }
+
+  h1 {
+    font-size: clamp(1.6rem, 7vw, 2.2rem) !important;
+  }
+
+  h2 {
+    font-size: clamp(1.3rem, 5.5vw, 1.7rem) !important;
+  }
+
+  /* Ensure touch friendly inputs & buttons on mobile */
+  .btn {
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+
+  .form-input, .form-select {
+    font-size: 16px !important; /* Prevents auto-zoom in iOS Safari */
+    min-height: 44px;
+  }
+
+  .card {
+    padding: 16px !important;
+  }
+
+  /* Grid divider tiles stack cleanly */
+  .grid-divider-container {
+    grid-template-columns: 1fr !important;
+  }
+
+  .grid-divider-tile {
+    padding: 20px 16px !important;
+  }
+
+  /* Dashboard mobile layout */
+  .dashboard-header-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+  }
+
+  .dashboard-header-row > div {
+    width: 100% !important;
+  }
+
+  .dashboard-header-row button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Table / reports horizontal scroll wrapper */
+  .table-responsive-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  /* Voice session controls on mobile */
+  .voice-controls-panel {
+    padding: 12px 8px !important;
+  }
+
+  .voice-question-text {
+    font-size: clamp(1.15rem, 5vw, 1.45rem) !important;
+    line-height: 1.5 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .btn {
+    width: 100%;
+  }
+
+  .hero-cta-group {
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+
+  .hero-cta-group button, .hero-cta-group a {
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+
+  .auth-container {
+    padding: 0 4px;
+  }
+
+  /* Score terminal adjustments */
+  .score-terminal-val {
+    font-size: 2.5rem !important;
+  }
+}
+
+

@@ -10,10 +10,11 @@ You use the STAR method (Situation, Task, Action, Result) to probe candidates' p
 When an answer lacks specificity, probe for concrete examples. When an answer is strong, acknowledge it briefly and move forward.
 Your tone is warm, professional, and encouraging — but you do not let vague answers slide.`,
 
-  technical: `You are a senior software engineer conducting a technical interview.
-You probe depth of knowledge: when candidates give surface-level answers, ask "how would you implement that?", "what's the time complexity?", or "what edge cases concern you?".
-You escalate difficulty based on how confidently the candidate handles each question.
-Your tone is direct, intellectually curious, and collegial.`,
+  technical: `You are a seasoned engineer conducting a technical interview.
+You tailor your questions strictly to the candidate's experience level and job role.
+For freshers and students, you assess core foundational principles, standard programming concepts, practical project experience, and problem-solving intuition with warmth, encouragement, and real-world clarity.
+For experienced engineers, you probe system architecture, depth of knowledge, trade-offs, and optimization.
+Your tone is direct, supportive, and collegial.`,
 
   system_design: `You are a principal engineer evaluating system design thinking.
 You focus on trade-offs: scalability vs complexity, consistency vs availability, cost vs performance.
@@ -35,29 +36,43 @@ export const questionGenerator = async (state) => {
 
   const persona = personaPrompts[interviewType];
   const isFirstTurn = turnCount === 0;
+  const isFirstQuestion = turnCount <= 1;
 
   const transcriptText = transcript
     .slice(-10) // Keep last 10 turns for context window efficiency
     .map((t) => `${t.speaker === 'ai' ? 'Interviewer' : 'Candidate'}: ${t.content}`)
     .join('\n');
 
-  const difficultyHint = `Difficulty level: ${difficultyLevel}/5. ${difficultyLevel <= 2 ? 'Keep questions accessible and foundational.' :
-      difficultyLevel === 3 ? 'Use moderately challenging questions.' :
-        difficultyLevel === 4 ? 'Ask challenging, multi-part questions.' :
-          'Ask expert-level questions that probe deep mastery.'
-    }`;
+  const difficultyHint = `Difficulty level: ${difficultyLevel}/5. ${
+    difficultyLevel <= 2 ? 'Keep questions friendly, accessible, foundational, and concept-focused.' :
+    difficultyLevel === 3 ? 'Use moderately challenging, practical real-world scenario questions.' :
+    difficultyLevel === 4 ? 'Ask challenging questions exploring design trade-offs and edge cases.' :
+    'Ask expert-level questions probing architectural mastery.'
+  }`;
 
   const experience = (candidateProfile?.experienceLevel || 'mid').toLowerCase();
   let calibrationInstruction = '';
   if (experience === 'student' || experience === 'junior') {
-    const levelPrompt = isFirstTurn
-      ? `For student: Ask about core concepts with simple, concrete examples. No production-scale distributed systems, no advanced transaction isolation levels, no concurrency at microsecond scale. Example opening: "What is the difference between a primary key and a foreign key?" or "Walk me through what happens when a user submits a login form."`
-      : `Focus on foundational concepts, practical basics, and real-world analogies first.`;
-    calibrationInstruction = `Candidate experience level: ${candidateProfile.experienceLevel}\n\nDifficulty rules — follow these strictly:\n- ${levelPrompt}\n- Current difficulty level in state: ${difficultyLevel}/5. Do not exceed this ceiling when generating the question.`;
+    calibrationInstruction = `Candidate experience level: ${candidateProfile.experienceLevel} (Student / Fresher / Entry-Level)
+CRITICAL FRESHER CALIBRATION RULES — STRICTLY ENFORCE:
+- Focus on foundational concepts, practical basics, core syntax, and real-world project analogies.
+- Keep tone encouraging, conversational, and accessible.
+- STRICTLY FORBIDDEN FOR FRESHERS:
+  * NEVER ask the candidate to implement data structures from scratch (e.g. custom hash tables, memory bucket resizing, balanced trees).
+  * NEVER ask about collision resolution algorithms, load factor formulas, underlying memory allocations, or compiler internals.
+  * NEVER ask about low-level concurrency, thread synchronization at microsecond scale, or distributed transactions.
+- If the candidate correctly names a data structure or concept (e.g., HashSet, HashMap, Array), acknowledge it positively and ask how they would apply it in a practical app or scenario.
+- Current difficulty level in state: ${difficultyLevel}/5 (Strict maximum ceiling for students/freshers is 2). Do NOT exceed this ceiling.`;
   } else if (experience === 'senior' || experience === 'lead' || experience === 'principal') {
-    calibrationInstruction = `Candidate experience level: ${candidateProfile.experienceLevel}\n\nDifficulty rules — follow these strictly:\n- senior: Full production-scale architecture, distributed systems, tradeoffs under load.\n- Current difficulty level in state: ${difficultyLevel}/5. Do not exceed this ceiling when generating the question.`;
+    calibrationInstruction = `Candidate experience level: ${candidateProfile.experienceLevel}
+Difficulty rules — follow these strictly:
+- senior: Full production-scale architecture, distributed systems, tradeoffs under load, fault tolerance.
+- Current difficulty level in state: ${difficultyLevel}/5.`;
   } else {
-    calibrationInstruction = `Candidate experience level: ${candidateProfile.experienceLevel}\n\nDifficulty rules — follow these strictly:\n- junior/mid: One step up or intermediate production scenarios, database indexing, basic system design.\n- Current difficulty level in state: ${difficultyLevel}/5. Do not exceed this ceiling when generating the question.`;
+    calibrationInstruction = `Candidate experience level: ${candidateProfile.experienceLevel} (Mid-Level)
+Difficulty rules — follow these strictly:
+- mid-level: Practical production scenarios, component lifecycle, database indexing, API contracts, standard edge cases.
+- Current difficulty level in state: ${difficultyLevel}/5.`;
   }
 
   const candidateFirstName = candidateProfile.name.split(/\s+/)[0];

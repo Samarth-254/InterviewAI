@@ -301,6 +301,7 @@ const InterviewSessionPage = () => {
         {/* Countdown Timer (Top Right) */}
         {phase === 'active' && callStatus !== 'connecting' && (
           <div
+            className="session-timer-badge"
             style={{
               position: 'absolute',
               top: -12,

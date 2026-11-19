@@ -53,7 +53,7 @@ export const voiceService = {
           ...(jobRole
             ? jobRole
               .split(/[^a-zA-Z]+/)
-              .filter((word) => word.length > 1)
+              .filter((word) => word.length > 3 && !['SDE', 'SWE', 'TECH'].includes(word.toUpperCase()))
               .map((word) => `${word}:2`)
             : []),
           ...(interviewType

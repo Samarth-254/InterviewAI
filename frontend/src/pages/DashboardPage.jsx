@@ -231,7 +231,7 @@ const DashboardPage = () => {
 
       <div className="container relative z-1" style={{ paddingTop: 48, paddingBottom: 80 }}>
         {/* Welcome greeting header row */}
-        <div className="page-enter" style={{ marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+        <div className="page-enter dashboard-header-row" style={{ marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
           <h1 style={{ fontSize: '2.25rem', fontFamily: 'var(--font-sans)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', textTransform: 'none', margin: 0 }}>
             Welcome back, {user?.name}
           </h1>
