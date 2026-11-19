@@ -34,6 +34,13 @@ const request = async (method, path, body = undefined) => {
   const data = await res.json();
 
   if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
+      if (window.location.pathname !== '/' && window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+        window.location.href = '/';
+      }
+    }
     const err = new Error(data.message || 'Request failed');
     err.status = res.status;
     err.data = data;
