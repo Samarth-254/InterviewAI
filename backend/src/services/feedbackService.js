@@ -21,7 +21,8 @@ export const feedbackService = {
     const user = await userModel.findById(session.user_id);
     const transcript = await transcriptModel.findBySessionId(sessionId);
 
-    if (transcript.length < 2) {
+    const hasCandidateTurn = transcript.some((t) => t.speaker === 'candidate');
+    if (transcript.length < 2 || !hasCandidateTurn) {
       console.warn(`[feedbackService] Session ${sessionId} has too few transcript entries to generate meaningful feedback`);
       return null;
     }

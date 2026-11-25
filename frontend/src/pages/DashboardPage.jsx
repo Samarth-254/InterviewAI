@@ -66,8 +66,9 @@ const DashboardPage = () => {
   }, [dropdownOpen, showFilters]);
 
   const completedSessions = sessions.filter((s) => s.status === 'completed');
-  const avgScore = completedSessions.length > 0
-    ? (completedSessions.reduce((sum, s) => sum + (parseFloat(s.overall_score) || 0), 0) / completedSessions.length).toFixed(1)
+  const scoredSessions = completedSessions.filter((s) => s.overall_score != null && !isNaN(parseFloat(s.overall_score)));
+  const avgScore = scoredSessions.length > 0
+    ? (scoredSessions.reduce((sum, s) => sum + parseFloat(s.overall_score), 0) / scoredSessions.length).toFixed(1)
     : null;
 
   const filteredSessions = sessions
@@ -117,10 +118,11 @@ const DashboardPage = () => {
   const getSubjectMetrics = (type) => {
     const typeSessions = sessions.filter((s) => s.interview_type === type);
     const completed = typeSessions.filter((s) => s.status === 'completed');
+    const scored = completed.filter((s) => s.overall_score != null && !isNaN(parseFloat(s.overall_score)));
     const totalCount = typeSessions.length;
     const completedCount = completed.length;
-    const avg = completedCount > 0
-      ? (completed.reduce((sum, s) => sum + (parseFloat(s.overall_score) || 0), 0) / completedCount).toFixed(1)
+    const avg = scored.length > 0
+      ? (scored.reduce((sum, s) => sum + parseFloat(s.overall_score), 0) / scored.length).toFixed(1)
       : null;
     return { totalCount, completedCount, avg };
   };

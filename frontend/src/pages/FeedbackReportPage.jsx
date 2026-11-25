@@ -55,6 +55,7 @@ const FeedbackReportPage = () => {
 
   useEffect(() => {
     let retryTimeout;
+    let cancelled = false;
     const fetchReport = async () => {
       try {
         // Fetch report and session metadata in parallel
@@ -63,41 +64,52 @@ const FeedbackReportPage = () => {
           apiClient.get(`/sessions/${sessionId}`),
         ]);
 
+        if (cancelled) return;
+
         if (sessionRes.status === 'fulfilled' && sessionRes.value?.data?.session) {
           setSession(sessionRes.value.data.session);
         }
 
-        const reportRes = res.status === 'fulfilled' ? res.value : null;
+        if (res.status === 'rejected') {
+          const err = res.reason;
+          if (err?.data?.noReportPossible) {
+            setError(err.data.message);
+            setLoading(false);
+          } else if (err?.status === 202) {
+            if (retries < 10) {
+              retryTimeout = setTimeout(() => setRetries((r) => r + 1), 4000);
+            } else {
+              setError('Feedback report is taking longer than expected. Try refreshing in a moment.');
+              setLoading(false);
+            }
+          } else {
+            setError(err?.data?.message || err?.message || 'Could not load feedback report');
+            setLoading(false);
+          }
+          return;
+        }
+
+        const reportRes = res.value;
         if (reportRes?.success && reportRes.data) {
           setReport(reportRes.data);
           setLoading(false);
+        } else if (retries < 10) {
+          retryTimeout = setTimeout(() => setRetries((r) => r + 1), (reportRes?.retryAfter || 4) * 1000);
         } else {
-          if (retries < 10) {
-            retryTimeout = setTimeout(() => setRetries((r) => r + 1), (reportRes?.retryAfter || 4) * 1000);
-          } else {
-            setError('Feedback report is taking longer than expected. Try refreshing in a moment.');
-            setLoading(false);
-          }
+          setError('Feedback report is taking longer than expected. Try refreshing in a moment.');
+          setLoading(false);
         }
       } catch (err) {
-        if (err.data?.noReportPossible) {
-          setError(err.data.message);
-          setLoading(false);
-        } else if (err.status === 202) {
-          if (retries < 10) {
-            retryTimeout = setTimeout(() => setRetries((r) => r + 1), 4000);
-          } else {
-            setError('Feedback report is taking longer than expected.');
-            setLoading(false);
-          }
-        } else {
-          setError(err.message || 'Could not load feedback report');
-          setLoading(false);
-        }
+        if (cancelled) return;
+        setError(err?.data?.message || err?.message || 'Could not load feedback report');
+        setLoading(false);
       }
     };
     fetchReport();
-    return () => clearTimeout(retryTimeout);
+    return () => {
+      cancelled = true;
+      clearTimeout(retryTimeout);
+    };
   }, [sessionId, retries]);
 
   if (loading) {
@@ -117,11 +129,14 @@ const FeedbackReportPage = () => {
   if (error) {
     return (
       <div className="page centered">
-        <div className="alert alert-error mb-4" style={{ maxWidth: 480 }}>
-          <AlertCircle size={14} strokeWidth={1.5} />
+        <div className="alert alert-error mb-6" style={{ maxWidth: 480 }}>
+          <AlertCircle size={16} strokeWidth={1.5} style={{ flexShrink: 0 }} />
           <span>{error}</span>
         </div>
-        <button className="btn btn-secondary" onClick={() => navigate('/dashboard')}>BACK TO DASHBOARD</button>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button className="btn btn-secondary" onClick={() => navigate('/dashboard')}>BACK TO DASHBOARD</button>
+          <button className="btn btn-primary" onClick={() => navigate('/interview/select')}>START NEW INTERVIEW</button>
+        </div>
       </div>
     );
   }

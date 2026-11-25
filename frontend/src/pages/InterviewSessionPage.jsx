@@ -50,10 +50,18 @@ const InterviewSessionPage = () => {
   const [timeLeft, setTimeLeft] = useState(() => getInitialTimeLimit(isPreview ? previewState.interviewType : interviewType));
 
   const sessionIdRef = useRef(null);
+  const vapiCallIdRef = useRef(null);
   const vapiInitialized = useRef(false);
   const callStarted = useRef(false); // guard against double-start
+  const endingRef = useRef(false);
+  const isMountedRef = useRef(true);
+  const phaseRef = useRef(phase);
   const finalAiUtterancesRef = useRef([]);
   const currentPartialTextRef = useRef('');
+
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
 
   // Sync timeLeft when preview category changes
   useEffect(() => {
@@ -63,6 +71,8 @@ const InterviewSessionPage = () => {
   }, [isPreview, previewState.interviewType]);
 
   const handleEndCall = useCallback(async () => {
+    if (endingRef.current) return;
+    endingRef.current = true;
     setPhase('ending');
     if (isPreview) {
       setPhase('done');
@@ -72,7 +82,7 @@ const InterviewSessionPage = () => {
       await vapiClient.stopCall();
       const sid = sessionIdRef.current;
       if (sid) {
-        await apiClient.post(`/sessions/${sid}/end`);
+        await apiClient.post(`/sessions/${sid}/end`, { callId: vapiCallIdRef.current });
       }
     } catch (err) {
       console.error('[handleEndCall]', err);
@@ -90,7 +100,7 @@ const InterviewSessionPage = () => {
     const sid = sessionIdRef.current;
     if (!sid) return;
     try {
-      await apiClient.patch(`/sessions/${sid}/abandon`);
+      await apiClient.patch(`/sessions/${sid}/abandon`, { callId: vapiCallIdRef.current });
     } catch (err) {
       console.warn('[handleAbandonSession]', err);
     }
@@ -100,10 +110,14 @@ const InterviewSessionPage = () => {
   useEffect(() => {
     if (isPreview) return;
     const handleBeforeUnload = () => {
+      if (endingRef.current || phaseRef.current === 'done' || phaseRef.current === 'ending') {
+        return;
+      }
+      vapiClient.stopCall();
       const sid = sessionIdRef.current;
       const token = localStorage.getItem('auth_token');
       if (!sid || !token) return;
-      // Use BACKEND_URL for sendBeacon
+      // Use BACKEND_URL for sendBeacon (POST /sessions/:id/abandon)
       const url = `${BACKEND_URL}/sessions/${sid}/abandon?_token=${encodeURIComponent(token)}`;
       navigator.sendBeacon(url);
     };
@@ -236,18 +250,31 @@ const InterviewSessionPage = () => {
           }
         }
       });
-      vapiClient.on('call-end', () => {
+      vapiClient.on('call-end', async () => {
+        // If handleEndCall already initiated shutdown, let it finish POST /end before transitioning to 'done'
+        if (endingRef.current) return;
+        endingRef.current = true;
         setCallStatus('ended');
+        const sid = sessionIdRef.current;
+        if (sid) {
+          await apiClient.post(`/sessions/${sid}/end`, { callId: vapiCallIdRef.current }).catch((err) => {
+            console.warn('[call-end] Could not end session on backend:', err);
+          });
+        }
         setPhase('done');
       });
       vapiClient.on('error', (err) => {
+        if (endingRef.current || phaseRef.current === 'done') return;
         console.error('[Vapi error]', err);
 
+        vapiClient.stopCall();
         setError('Meeting ended due to some errors. Please try again.');
         setPhase('setup');
         callStarted.current = false;
         // PATCH the session as abandoned since the call ended unexpectedly
         handleAbandonSession();
+        sessionIdRef.current = null;
+        vapiCallIdRef.current = null;
       });
 
       // Show "connecting" UI immediately so user sees progress
@@ -256,7 +283,15 @@ const InterviewSessionPage = () => {
 
       // Start the web call — passes assistantId to vapi.start()
       // The SDK will create/join a Daily.co room and emit 'call-start' when ready
-      await vapiClient.startCall(vapiConfig.assistantId);
+      const call = await vapiClient.startCall(vapiConfig.assistantId);
+      if (call?.id) {
+        vapiCallIdRef.current = call.id;
+      }
+
+      // If user ended or navigated away while startCall was connecting, stop immediately
+      if (!isMountedRef.current || endingRef.current) {
+        await vapiClient.stopCall();
+      }
 
     } catch (err) {
       console.error('[startInterview]', err);
@@ -267,14 +302,25 @@ const InterviewSessionPage = () => {
   }, [interviewType, isPreview, fetchSessionProgress, previewState, handleAbandonSession]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     startInterview();
 
     return () => {
+      isMountedRef.current = false;
       if (!isPreview) {
-        vapiClient.offAll();
+        // Defer cleanup so React StrictMode's synchronous unmount+remount doesn't kill the active call
+        setTimeout(() => {
+          if (!isMountedRef.current) {
+            vapiClient.offAll();
+            if (!endingRef.current && phaseRef.current !== 'done') {
+              vapiClient.stopCall();
+              handleAbandonSession();
+            }
+          }
+        }, 0);
       }
     };
-  }, [startInterview, isPreview]);
+  }, [startInterview, isPreview, handleAbandonSession]);
 
   // Redirect to feedback page when done
   useEffect(() => {
@@ -351,7 +397,7 @@ const InterviewSessionPage = () => {
             <AlertCircle size={14} strokeWidth={1.5} />
             <div>
               <div>{error}</div>
-              <button className="btn btn-sm btn-secondary mt-2" onClick={() => { callStarted.current = false; startInterview(); }}>
+              <button className="btn btn-sm btn-secondary mt-2" onClick={() => { callStarted.current = false; endingRef.current = false; startInterview(); }}>
                 RETRY
               </button>
             </div>

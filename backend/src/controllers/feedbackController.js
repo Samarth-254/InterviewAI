@@ -18,13 +18,17 @@ export const getFeedback = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
-    // Check if session has enough turns before trying to load/generate feedback
+    // Check if session has enough turns (including at least one candidate response) before trying to load/generate feedback
     const transcript = await transcriptModel.findBySessionId(sessionId);
-    if (!transcript || transcript.length < 2) {
+    const hasCandidateTurn = transcript?.some((t) => t.speaker === 'candidate');
+    if (!transcript || transcript.length < 2 || !hasCandidateTurn) {
+      if (session.status === 'active') {
+        await sessionModel.updateStatus(sessionId, 'abandoned').catch(() => {});
+      }
       return res.status(422).json({
         success: false,
         noReportPossible: true,
-        message: 'This session has too few transcript entries to generate a feedback report. Practice some more turns to generate a report!',
+        message: 'This session has too few transcript entries to generate a feedback report. Complete at least one question and answer to generate a report!',
       });
     }
 

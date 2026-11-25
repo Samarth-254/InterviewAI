@@ -33,7 +33,21 @@ export const vapiClient = {
 
   async stopCall() {
     if (!vapiInstance) return;
-    return vapiInstance.stop();
+    try {
+      if (vapiInstance.call) {
+        vapiInstance.send({ type: 'end-call' });
+      }
+    } catch {
+      // Ignore send errors if call is not yet/no longer connected
+    }
+    try {
+      await Promise.race([
+        vapiInstance.stop(),
+        new Promise((resolve) => setTimeout(resolve, 2500)),
+      ]);
+    } catch (err) {
+      console.warn('[vapiClient.stopCall] error:', err);
+    }
   },
 
   setMuted(muted) {

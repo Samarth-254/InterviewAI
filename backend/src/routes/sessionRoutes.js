@@ -12,5 +12,6 @@ router.get('/:id', getSession);
 router.get('/:id/progress', getSessionProgress);
 router.post('/:id/end', endSession);
 router.patch('/:id/abandon', abandonSession);
+router.post('/:id/abandon', abandonSession);
 
 export default router;

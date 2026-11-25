@@ -106,6 +106,7 @@ export const getSession = async (req, res) => {
 export const endSession = async (req, res) => {
   try {
     const sessionId = parseInt(req.params.id, 10);
+    const { callId } = req.body || {};
     const session = await sessionModel.findById(sessionId);
 
     if (!session) {
@@ -115,14 +116,30 @@ export const endSession = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
     if (session.status !== 'active') {
-      return res.status(200).json({ success: true, message: 'Session already completed' });
+      return res.status(200).json({ success: true, data: session, message: 'Session already completed' });
     }
 
-    // End the Vapi call if one is active
-    if (session.voice_call_id) {
-      await voiceService.endCall(session.voice_call_id).catch((e) => {
+    // End the active Vapi call if callId was provided
+    if (callId) {
+      await voiceService.endCall(callId).catch((e) => {
         console.warn('[endSession] Could not end Vapi call:', e.message);
       });
+    }
+
+    // Clean up the per-session Vapi assistant (voice_call_id stores assistantId)
+    if (session.voice_call_id) {
+      voiceService.deleteAssistant(session.voice_call_id).catch((e) => {
+        console.warn('[endSession] Could not delete Vapi assistant:', e.message);
+      });
+    }
+
+    // Only mark as completed & generate feedback if candidate actually participated
+    const transcript = await transcriptModel.findBySessionId(sessionId);
+    const hasCandidateTurn = transcript.some((t) => t.speaker === 'candidate');
+
+    if (transcript.length < 2 || !hasCandidateTurn) {
+      const updated = await sessionModel.updateStatus(sessionId, 'abandoned');
+      return res.status(200).json({ success: true, data: updated });
     }
 
     const updated = await sessionModel.updateStatus(sessionId, 'completed');
@@ -142,11 +159,12 @@ export const endSession = async (req, res) => {
 /**
  * abandonSession — called by the frontend when a Vapi error/unexpected
  * disconnect occurs while the page is still open. Uses a regular PATCH.
- * The sendBeacon (page unload) path on the client hits the same endpoint.
+ * The sendBeacon (page unload) path on the client hits POST on the same endpoint.
  */
 export const abandonSession = async (req, res) => {
   try {
     const sessionId = parseInt(req.params.id, 10);
+    const { callId } = req.body || {};
     const session = await sessionModel.findById(sessionId);
 
     if (!session) {
@@ -156,7 +174,18 @@ export const abandonSession = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
     if (session.status !== 'active') {
-      return res.status(200).json({ success: true, message: 'Session already resolved' });
+      return res.status(200).json({ success: true, data: session, message: 'Session already resolved' });
+    }
+
+    if (callId) {
+      voiceService.endCall(callId).catch((e) => {
+        console.warn('[abandonSession] Could not end Vapi call:', e.message);
+      });
+    }
+    if (session.voice_call_id) {
+      voiceService.deleteAssistant(session.voice_call_id).catch((e) => {
+        console.warn('[abandonSession] Could not delete Vapi assistant:', e.message);
+      });
     }
 
     const updated = await sessionModel.updateStatus(sessionId, 'abandoned');

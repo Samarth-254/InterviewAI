@@ -166,12 +166,22 @@ export const handleVapiEvent = async (req, res) => {
     if (type === 'call-ended' || type === 'call.ended') {
       const sessionId = call?.metadata?.sessionId;
       if (sessionId) {
-        const session = await sessionModel.findById(parseInt(sessionId, 10));
+        const sid = parseInt(sessionId, 10);
+        const session = await sessionModel.findById(sid);
+        if (session?.voice_call_id) {
+          voiceService.deleteAssistant(session.voice_call_id).catch(() => {});
+        }
         if (session && session.status === 'active') {
-          await sessionModel.updateStatus(parseInt(sessionId, 10), 'completed');
-          feedbackService.generateReport(parseInt(sessionId, 10)).catch((e) => {
-            console.error('[vapiEvent] Feedback generation failed:', e);
-          });
+          const transcript = await transcriptModel.findBySessionId(sid);
+          const hasCandidateTurn = transcript.some((t) => t.speaker === 'candidate');
+          if (transcript.length < 2 || !hasCandidateTurn) {
+            await sessionModel.updateStatus(sid, 'abandoned');
+          } else {
+            await sessionModel.updateStatus(sid, 'completed');
+            feedbackService.generateReport(sid).catch((e) => {
+              console.error('[vapiEvent] Feedback generation failed:', e);
+            });
+          }
         }
       }
     }

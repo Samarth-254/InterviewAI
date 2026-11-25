@@ -24,6 +24,7 @@ const VoiceCallControls = ({
   const isSpeaking = callStatus === 'speaking';
   const isListening = callStatus === 'listening';
   const isProcessing = callStatus === 'processing';
+  const isEnding = callStatus === 'ending';
   const isAudioFlowing = isSpeaking || isListening;
 
   const isMuted = isPreview ? (previewMuted || isProcessing) : (muted || isProcessing);
@@ -125,8 +126,8 @@ const VoiceCallControls = ({
         <button
           id="mute-toggle"
           className="btn btn-secondary"
-          onClick={(isPreview || isProcessing) ? undefined : handleMuteToggle}
-          disabled={isProcessing}
+          onClick={(isPreview || isProcessing || isEnding) ? undefined : handleMuteToggle}
+          disabled={isProcessing || isEnding}
           style={{
             flex: 1,
             height: '44px',
@@ -134,14 +135,14 @@ const VoiceCallControls = ({
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
-            borderColor: isProcessing ? 'var(--border-hairline)' : (isMuted ? 'var(--status-fail)' : 'var(--border-hairline)'),
-            background: isProcessing ? 'var(--bg-surface-hover)' : (isMuted ? 'rgba(248,113,113,0.05)' : 'none'),
-            color: isProcessing ? 'var(--text-dim)' : (isMuted ? 'var(--status-fail)' : 'var(--text-primary)'),
+            borderColor: (isProcessing || isEnding) ? 'var(--border-hairline)' : (isMuted ? 'var(--status-fail)' : 'var(--border-hairline)'),
+            background: (isProcessing || isEnding) ? 'var(--bg-surface-hover)' : (isMuted ? 'rgba(248,113,113,0.05)' : 'none'),
+            color: (isProcessing || isEnding) ? 'var(--text-dim)' : (isMuted ? 'var(--status-fail)' : 'var(--text-primary)'),
             fontFamily: 'var(--font-mono)',
             fontSize: '0.8rem',
             fontWeight: 600,
-            cursor: (isPreview || isProcessing) ? 'default' : 'pointer',
-            opacity: isProcessing ? 0.6 : 1.0,
+            cursor: (isPreview || isProcessing || isEnding) ? 'default' : 'pointer',
+            opacity: (isProcessing || isEnding) ? 0.6 : 1.0,
           }}
         >
           {isMuted ? (
@@ -161,7 +162,8 @@ const VoiceCallControls = ({
         <button
           id="end-call"
           className="btn btn-secondary"
-          onClick={onEndCall}
+          onClick={isEnding ? undefined : onEndCall}
+          disabled={isEnding}
           style={{
             flex: 1,
             height: '44px',
@@ -175,11 +177,12 @@ const VoiceCallControls = ({
             fontFamily: 'var(--font-mono)',
             fontSize: '0.8rem',
             fontWeight: 600,
-            cursor: 'pointer',
+            cursor: isEnding ? 'default' : 'pointer',
+            opacity: isEnding ? 0.6 : 1.0,
           }}
         >
           <Square size={12} strokeWidth={1.5} style={{ fill: 'currentColor' }} />
-          END INTERVIEW
+          {isEnding ? 'ENDING...' : 'END INTERVIEW'}
         </button>
       </div>
 
